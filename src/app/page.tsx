@@ -1,230 +1,92 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCart } from "@/lib/cart";
-import { formatarPreco } from "@/lib/products";
-import type { OpcaoFrete, FormaPagamento } from "@/lib/types";
+import Emblema from "@/components/Emblema";
+import Icone from "@/components/Icone";
+import { Divisor, FaixaLosangos } from "@/components/Grafismos";
 
-export default function CheckoutPage() {
-  const { itens, totalCentavos, limpar } = useCart();
-  const router = useRouter();
+export const metadata = { title: "Caboclo Nativo · Objetos de Poder" };
 
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [cep, setCep] = useState("");
-  const [fretes, setFretes] = useState<OpcaoFrete[]>([]);
-  const [freteSel, setFreteSel] = useState<OpcaoFrete | null>(null);
-  const [pagamento, setPagamento] = useState<FormaPagamento>("pix");
-  const [calculando, setCalculando] = useState(false);
-  const [processando, setProcessando] = useState(false);
-  const [erro, setErro] = useState("");
+const VALORES = [
+  {
+    icone: "cachimbo" as const,
+    t: "Feito à mão",
+    d: "Nenhuma peça é igual a outra. Cada uma carrega o tempo lento das mãos e a marca da madeira.",
+  },
+  {
+    icone: "oca" as const,
+    t: "Com a reza",
+    d: "Antes de virar objeto, a matéria é trabalhada com intenção. O que sai daqui carrega cuidado.",
+  },
+  {
+    icone: "jiboia" as const,
+    t: "Da floresta",
+    d: "Madeiras, sementes e fibras de origem responsável — o respeito pela mata é parte do ofício.",
+  },
+];
 
-  const total = totalCentavos + (freteSel?.precoCentavos ?? 0);
-
-  if (itens.length === 0) {
-    return (
-      <section className="wrap" style={{ minHeight: "50vh", paddingTop: "4rem", textAlign: "center" }}>
-        <h1 className="title">Nada para finalizar</h1>
-        <Link href="/catalogo" className="btn">Ver o catálogo</Link>
-      </section>
-    );
-  }
-
-  async function calcularFrete() {
-    setErro("");
-    setCalculando(true);
-    setFretes([]);
-    setFreteSel(null);
-    try {
-      const r = await fetch("/api/frete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cep, itens }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.erro || "Falha ao calcular frete");
-      setFretes(data.opcoes);
-      setFreteSel(data.opcoes[0] ?? null);
-    } catch (e: any) {
-      setErro(e.message);
-    } finally {
-      setCalculando(false);
-    }
-  }
-
-  async function finalizar() {
-    setErro("");
-    if (!nome || !email) return setErro("Preencha nome e e-mail.");
-    if (!freteSel) return setErro("Calcule e escolha o frete.");
-    setProcessando(true);
-    try {
-      const r = await fetch("/api/pagamento", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          itens,
-          freteCentavos: freteSel.precoCentavos,
-          comprador: { nome, email },
-          forma: pagamento,
-        }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.erro || "Falha no pagamento");
-
-      // Em produção: redireciona ao init_point do Mercado Pago.
-      // Em demo: vai para a tela de sucesso simulada.
-      limpar();
-      const params = new URLSearchParams({
-        forma: pagamento,
-        total: String(total),
-        pix: data.pixCopiaECola ?? "",
-      });
-      router.push(`/checkout/sucesso?${params.toString()}`);
-    } catch (e: any) {
-      setErro(e.message);
-      setProcessando(false);
-    }
-  }
-
+export default function HomePage() {
   return (
-    <section className="wrap" style={{ paddingTop: "3rem" }}>
-      <span className="sec-num">Checkout</span>
-      <h1 className="title">Finalizar compra</h1>
-
-      <div className="checkout-layout" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "2.5rem", marginTop: "2rem" }}>
-        <div>
-          {/* dados */}
-          <h2 style={subt}>Seus dados</h2>
-          <div className="field">
-            <label>Nome completo</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Como devemos chamar você" />
+    <>
+      {/* topo escuro com a logo oficial */}
+      <section style={{ background: "var(--carvao)", color: "var(--osso)" }}>
+        <div className="wrap personalizado-hero" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "2.5rem", alignItems: "center" }}>
+          <div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: ".7rem", color: "var(--ocre)", marginBottom: ".6rem" }}>
+              <Icone nome="caboclo" variante="linha" size={34} />
+              <span className="kicker on-dark" style={{ margin: 0 }}>A casa</span>
+            </span>
+            <h1 className="title" style={{ color: "var(--osso)" }}>Caboclo Nativo</h1>
+            <p className="lead" style={{ color: "rgba(236,227,208,.82)" }}>
+              Objetos de poder feitos à mão, com as mãos e com a reza. Uma casa pequena, de produção
+              cuidadosa, dedicada a cachimbos, kuripes, tipís, maracás, abanilhos e tabaco de rezo.
+            </p>
           </div>
-          <div className="field">
-            <label>E-mail</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
+          <div className="hero-aside" style={{ display: "flex", justifyContent: "center" }}>
+            <Emblema size={190} color="var(--ouro)" />
           </div>
-
-          {/* frete */}
-          <h2 style={{ ...subt, marginTop: "2rem" }}>Entrega</h2>
-          <div style={{ display: "flex", gap: ".8rem", alignItems: "flex-end" }}>
-            <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-              <label>CEP</label>
-              <input value={cep} onChange={(e) => setCep(e.target.value)} placeholder="00000-000" inputMode="numeric" />
-            </div>
-            <button className="btn ghost" onClick={calcularFrete} disabled={calculando}>
-              {calculando ? "Calculando…" : "Calcular frete"}
-            </button>
-          </div>
-
-          {fretes.length > 0 && (
-            <div style={{ marginTop: "1rem", display: "grid", gap: ".6rem" }}>
-              {fretes.map((f) => (
-                <label
-                  key={f.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: ".9rem 1rem",
-                    border: `1px solid ${freteSel?.id === f.id ? "var(--barro)" : "rgba(43,38,32,.2)"}`,
-                    background: freteSel?.id === f.id ? "rgba(156,74,46,.06)" : "transparent",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ display: "flex", alignItems: "center", gap: ".7rem" }}>
-                    <input
-                      type="radio"
-                      name="frete"
-                      checked={freteSel?.id === f.id}
-                      onChange={() => setFreteSel(f)}
-                    />
-                    <span>
-                      <strong>{f.transportadora} {f.servico}</strong>
-                      <span style={{ display: "block", fontSize: ".82rem", color: "var(--tinta-suave)" }}>
-                        até {f.prazoDias} dias úteis
-                      </span>
-                    </span>
-                  </span>
-                  <strong style={{ fontFamily: "var(--lap)" }}>{formatarPreco(f.precoCentavos)}</strong>
-                </label>
-              ))}
-            </div>
-          )}
-
-          {/* pagamento */}
-          <h2 style={{ ...subt, marginTop: "2rem" }}>Pagamento</h2>
-          <div style={{ display: "flex", gap: ".8rem" }}>
-            {(["pix", "cartao"] as FormaPagamento[]).map((forma) => (
-              <button
-                key={forma}
-                onClick={() => setPagamento(forma)}
-                className="surface"
-                style={{
-                  flex: 1,
-                  padding: "1rem",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  border: `1px solid ${pagamento === forma ? "var(--barro)" : "rgba(43,38,32,.2)"}`,
-                  background: pagamento === forma ? "rgba(156,74,46,.06)" : "var(--osso-2)",
-                  fontFamily: "var(--lap-sc)",
-                  letterSpacing: ".14em",
-                  textTransform: "uppercase",
-                  fontSize: ".74rem",
-                }}
-              >
-                {forma === "pix" ? "Pix" : "Cartão"}
-              </button>
-            ))}
-          </div>
-          <p style={{ fontSize: ".85rem", color: "var(--tinta-suave)", marginTop: ".7rem" }}>
-            {pagamento === "pix"
-              ? "Você receberá o QR Code / código copia-e-cola na próxima etapa."
-              : "Você será levado ao ambiente seguro do Mercado Pago para informar os dados do cartão."}
-          </p>
-
-          {erro && <p style={{ color: "var(--brasa)", marginTop: "1rem" }}>{erro}</p>}
         </div>
+      </section>
 
-        {/* resumo */}
-        <aside className="surface" style={{ padding: "1.8rem", alignSelf: "start", position: "sticky", top: "calc(var(--header-h) + 1rem)" }}>
-          <h2 style={{ fontFamily: "var(--lap)", fontSize: "1.4rem", marginBottom: "1rem" }}>Resumo</h2>
-          {itens.map((i) => (
-            <div key={i.produtoId} style={{ display: "flex", justifyContent: "space-between", fontSize: ".92rem", padding: ".3rem 0" }}>
-              <span>{i.quantidade}× {i.nome}</span>
-              <span>{formatarPreco(i.precoCentavos * i.quantidade)}</span>
+      {/* manifesto */}
+      <section className="wrap narrow">
+        <p className="kicker">O que nos move</p>
+        <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: "clamp(1.4rem,3vw,2rem)", lineHeight: 1.5, color: "var(--tinta)" }}>
+          Não fabricamos objetos — <b style={{ fontStyle: "normal", fontFamily: "var(--lap)", color: "var(--brasa)" }}>despertamos a memória</b> que dorme
+          na madeira, na semente e na fumaça. Cada peça é uma ponte entre quem reza e o que é rezado.
+        </p>
+        <Divisor className="" />
+      </section>
+
+      {/* valores */}
+      <section className="wrap" style={{ paddingTop: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: "1.4rem" }}>
+          {VALORES.map((v) => (
+            <div key={v.t} className="surface" style={{ padding: "1.8rem 1.6rem" }}>
+              <span style={{ color: "var(--barro)" }}>
+                <Icone nome={v.icone} variante="selo" size={56} />
+              </span>
+              <h3 style={{ fontFamily: "var(--lap)", fontSize: "1.4rem", color: "var(--carvao)", marginTop: ".6rem" }}>{v.t}</h3>
+              <p style={{ fontSize: ".95rem", color: "var(--tinta-suave)", margin: ".4rem 0 0", lineHeight: 1.5 }}>{v.d}</p>
             </div>
           ))}
-          <div style={{ borderTop: "1px solid rgba(43,38,32,.14)", marginTop: ".7rem", paddingTop: ".7rem" }}>
-            <Row k="Subtotal" v={formatarPreco(totalCentavos)} />
-            <Row k="Frete" v={freteSel ? formatarPreco(freteSel.precoCentavos) : "—"} />
-          </div>
-          <div style={{ borderTop: "1px solid rgba(43,38,32,.18)", marginTop: ".7rem", paddingTop: ".9rem", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontFamily: "var(--lap-sc)", letterSpacing: ".16em", textTransform: "uppercase", fontSize: ".74rem" }}>Total</span>
-            <strong style={{ fontFamily: "var(--lap)", fontSize: "1.5rem", color: "var(--barro)" }}>{formatarPreco(total)}</strong>
-          </div>
-          <button className="btn" style={{ width: "100%", justifyContent: "center", marginTop: "1.2rem" }} onClick={finalizar} disabled={processando}>
-            {processando ? "Processando…" : pagamento === "pix" ? "Gerar Pix" : "Pagar com cartão"}
-          </button>
-        </aside>
-      </div>
-    </section>
-  );
-}
+        </div>
+      </section>
 
-const subt: React.CSSProperties = {
-  fontFamily: "var(--lap)",
-  fontSize: "1.4rem",
-  marginBottom: "1rem",
-  color: "var(--carvao)",
-};
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: ".25rem 0", fontSize: ".95rem" }}>
-      <span style={{ color: "var(--tinta-suave)" }}>{k}</span>
-      <span>{v}</span>
-    </div>
+      {/* chamada */}
+      <section className="wrap" style={{ paddingTop: 0 }}>
+        <div className="surface" style={{ background: "var(--barro)", color: "var(--osso)", border: "none", padding: "3rem", textAlign: "center" }}>
+          <h2 className="title" style={{ color: "var(--osso)" }}>Quer conhecer as peças?</h2>
+          <p style={{ fontSize: "1.1rem", color: "rgba(236,227,208,.86)", maxWidth: "52ch", margin: "0 auto 1.6rem" }}>
+            Explore o catálogo ou agende uma conversa para uma peça feita só para você.
+          </p>
+          <div style={{ display: "flex", gap: ".8rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/catalogo" className="btn" style={{ background: "var(--carvao)", borderColor: "var(--carvao)" }}>Ver o catálogo</Link>
+            <Link href="/personalizado" className="btn ghost on-dark">Peça personalizada</Link>
+          </div>
+        </div>
+        <div style={{ marginTop: "3rem", color: "var(--ocre)" }}>
+          <FaixaLosangos className="band" />
+        </div>
+      </section>
+    </>
   );
 }

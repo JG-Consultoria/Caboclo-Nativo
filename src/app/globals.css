@@ -294,6 +294,7 @@ section { padding: 6rem 0; }
   .footer-grid,
   .personalizado-cta,
   .personalizado-hero,
+  .artesao-grid,
   .form-2col { grid-template-columns: 1fr !important; }
   .personalizado-cta { text-align: left; }
   /* o emblema decorativo lateral some em telas estreitas */

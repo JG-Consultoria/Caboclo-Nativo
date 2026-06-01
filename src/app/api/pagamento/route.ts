@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { criarPreferenciaPagamento } from "@/lib/mercadopago";
+import { rateLimit, clientIp } from "@/lib/rateLimiter";
 
 /* ============================================================
    POST /api/pagamento  { itens, freteCentavos, comprador, forma }
@@ -8,6 +9,14 @@ import { criarPreferenciaPagamento } from "@/lib/mercadopago";
    ============================================================ */
 
 export async function POST(req: Request) {
+  const { allowed } = rateLimit(`pay:${clientIp(req)}`, 5, 5 * 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { erro: "Muitas tentativas. Aguarde alguns minutos." },
+      { status: 429 }
+    );
+  }
+
   try {
     const { itens, freteCentavos, comprador } = await req.json();
 

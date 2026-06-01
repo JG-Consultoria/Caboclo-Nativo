@@ -1,22 +1,51 @@
 import { NextResponse } from "next/server";
+import { createHmac } from "crypto";
 
 /* ============================================================
    POST /api/pagamento/webhook
    Mercado Pago chama esta URL quando o status do pagamento muda.
-   É AQUI que o fluxo automático se fecha:
-     1. confirmar o pagamento (consultar a API do MP pelo id)
-     2. marcar o pedido como "pago"
-     3. baixar o estoque automaticamente
-     4. disparar a etiqueta de envio (Melhor Envio)
-     5. notificar cliente e a casa
+   A assinatura HMAC-SHA256 é verificada antes de processar.
 
-   Em modo demo apenas registramos e respondemos 200.
+   Variável de ambiente necessária: MP_WEBHOOK_SECRET
+   (Painel MP → Suas integrações → Webhooks → Chave secreta)
    ============================================================ */
 
+function verificarAssinatura(
+  dataId: string | undefined,
+  xSignature: string,
+  xRequestId: string
+): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) return false;
+
+  // x-signature formato: "ts=<timestamp>,v1=<hmac_hex>"
+  const partes = Object.fromEntries(
+    xSignature.split(",").map((p) => p.split("=") as [string, string])
+  );
+  const ts = partes["ts"];
+  const v1 = partes["v1"];
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${dataId ?? ""};request-id:${xRequestId};ts:${ts}`;
+  const esperado = createHmac("sha256", secret).update(manifest).digest("hex");
+
+  return esperado === v1;
+}
+
 export async function POST(req: Request) {
+  const xSignature = req.headers.get("x-signature") ?? "";
+  const xRequestId = req.headers.get("x-request-id") ?? "";
+
   const body = await req.json().catch(() => ({}));
 
-  // Produção (esboço):
+  // Valida assinatura se o secret estiver configurado
+  if (process.env.MP_WEBHOOK_SECRET) {
+    if (!verificarAssinatura(body?.data?.id, xSignature, xRequestId)) {
+      return NextResponse.json({ erro: "Assinatura inválida." }, { status: 401 });
+    }
+  }
+
+  // TODO (Fase 2):
   // const paymentId = body?.data?.id;
   // const pagamento = await consultarPagamentoMP(paymentId);
   // if (pagamento.status === "approved") {
@@ -25,11 +54,11 @@ export async function POST(req: Request) {
   //   await gerarEtiquetaEnvio(pagamento.external_reference);
   // }
 
-  console.log("[webhook MP] recebido:", body?.type ?? "evento");
+  console.log("[webhook MP] recebido:", body?.type ?? "evento", "| id:", body?.data?.id ?? "—");
   return NextResponse.json({ recebido: true });
 }
 
-// MP às vezes valida o endpoint com GET
+// MP valida o endpoint com GET
 export async function GET() {
   return NextResponse.json({ ok: true });
 }

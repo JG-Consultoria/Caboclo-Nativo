@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Emblema from "@/components/Emblema";
 import { formatarPreco } from "@/lib/products";
 
@@ -25,6 +26,12 @@ export default function AdminPage() {
   const [m, setM] = useState<Metricas | null>(null);
   const [estoque, setEstoque] = useState<ItemEstoque[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const router = useRouter();
+
+  async function sair() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin/login");
+  }
 
   useEffect(() => {
     Promise.all([
@@ -59,9 +66,18 @@ export default function AdminPage() {
 
   return (
     <section className="wrap" style={{ paddingTop: "3rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: ".8rem", marginBottom: ".4rem" }}>
-        <Emblema size={36} color="var(--barro)" />
-        <span className="sec-num" style={{ margin: 0 }}>Painel</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".4rem", flexWrap: "wrap", gap: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: ".8rem" }}>
+          <Emblema size={36} color="var(--barro)" />
+          <span className="sec-num" style={{ margin: 0 }}>Painel</span>
+        </div>
+        <button
+          onClick={sair}
+          className="btn ghost"
+          style={{ fontSize: ".72rem", padding: ".6em 1.2em" }}
+        >
+          Sair
+        </button>
       </div>
       <h1 className="title">Vendas & estoque</h1>
       <p className="lead">Visão da casa. Em produção, os números vêm do banco e do Mercado Pago em tempo real.</p>
